@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
 
-const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://kukufm-assignment-api.onrender.com' : '')).trim().replace(/\\/+$/, '');
+const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://kukufm-assignment-api.onrender.com' : '')).trim().replace(/\/+$/, '');
 const repo = 'https://github.com/teambugbusters00/kuku-assignment-';
 const demoA = "Maya entered the hospital with a blood-stained letter. She told her brother Arjun their father was alive and hid evidence in the mansion. Arjun owns the silver key. Maya promised to return before midnight.";
 const demoB = "The next morning Maya arrives at the police station. Arjun says their father died years ago and the silver key was stolen. Maya asks the detective to find the letter.";
