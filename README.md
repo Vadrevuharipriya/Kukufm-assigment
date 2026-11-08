@@ -1,31 +1,59 @@
 # StoryBridge — Microdrama Continuity Review
-Problem 3 · BUG BUSTERS
+**Problem 3 · BUG BUSTERS**
 
-## Problem and evidence
-Microdramas serialize stories into short vertical episodes. Character status, relationships, props, and settings can shift across installments; editors manually compare scripts to catch continuity risks and missing context.
-Public evidence: Indian Express describes rapid vertical storytelling and short episode format (https://indianexpress.com/article/long-reads/hooked-in-a-minute-the-rise-microdrama-vertical-dramas-10206049/). Public app reviews mention episode/language/subtitle friction (https://apps.apple.com/us/app/micro-drama-short-drama-show/id6738779896?platform=iphone&see-all=reviews). These are signals, not representative research.
+StoryBridge is a human-in-the-loop editorial assistant for checking continuity between microdrama episodes. It reads the 50 episode TXT files stored in original_assignment_files/ directly.
 
-## Solution
-StoryBridge compares two adjacent episode text excerpts and surfaces character-name signals, possible status/relationship/possession contradictions, setting changes, evidence, and a human checklist. Flags are editorial prompts, not verdicts.
+## What the app does
+- **Episode library:** lists episode files, character count, and a short preview.
+- **Pair comparison:** choose any two episode files and review rule-based character, status, relationship, possession, and setting signals.
+- **Full-series scan:** checks adjacent episode pairs in filename order and gives a report with flags per pair.
+- **Manual editor:** paste or edit text to compare without changing the original script files.
+- **Export:** copy pair or series report as JSON.
+- **Human review checklist:** prompts editors to check timeline, relationships, props, injuries, wardrobe, recap context, and cliffhanger payoff.
 
-## Scope and assumptions
-One editor, adjacent episodes, English text, text-only. Demo is synthetic. Use only content you own, have permission to use, or public text. Do not upload/publish Kuku's confidential input pack.
+## Repository structure
+- api/index.py — FastAPI API + rule-based analysis
+- frontend/ — React + Vite web app
+- original_assignment_files/ — episode TXT dataset (episode-001 through episode-050)
+- tests/ — API tests
+- solution_doc.md — solution and evaluation plan
 
-## Stack and setup
-React + Vite frontend, FastAPI backend, Python regex baseline, Vercel target. No database, external LLM, paid API, or runtime model.
-Install: pip install -r requirements.txt
-API: uvicorn api.index:app --reload
-Frontend: cd frontend && npm install && npm run build
-Use Vercel CLI (vercel dev) for integrated routing.
+## Run locally
+From repository root:
+
+    python -m pip install -r requirements.txt
+    uvicorn api.index:app --reload
+
+In another terminal:
+
+    cd frontend
+    npm install
+    npm run dev
+
+Open the Vite URL shown in the terminal. In local development, the frontend uses the backend at the same origin; set VITE_API_URL=http://localhost:8000 if frontend and backend use different ports.
+
+## API endpoints
+- GET / — health check
+- GET /api/episodes — list the script dataset
+- POST /api/analyze — compare manually supplied text
+- POST /api/analyze-episodes — compare two dataset episode IDs
+- GET /api/analyze-series — scan all adjacent pairs
 
 ## Deployment
-Import repo into Vercel at root. vercel.json routes /api to api/index.py and builds frontend. Multi-build Python/static support may vary; if Vercel rejects config, deploy API as a separate Vercel project and set frontend API URL. Deployment is not yet verified.
+The current Render backend is configured to start with:
 
-## Quality and limits
-Input validation: 20–30,000 chars. Name extraction is heuristic; aliases, implicit conflicts, visual continuity, timestamps, and multilingual scripts are unsupported. False positives expected. No flags does not mean no error.
+    uvicorn api.index:app --host 0.0.0.0 --port $PORT
 
-## Pilot evaluation
-Run on 20 editor-reviewed episode pairs. Measure precision/recall, false positives, dismissal rate, and minutes saved. Suggested target: 60%+ of high-severity flags judged useful and measurable time savings. This is a proposed target, not a result.
+Frontend API URL can be configured with VITE_API_URL; production fallback is the existing Render backend URL. Confirm Render deployment status and test deployed endpoints before presenting the site as production-ready.
+
+## Important data / privacy note
+The episode files are included in this repository and may be visible to anyone if the repository is public. Only keep them here if you have permission to publish and process them. If the KukuFM assignment pack is confidential or intended only for evaluation, make the repository private or remove the source scripts before sharing publicly. Do not upload confidential scripts to third-party AI services.
+
+## Detection approach and limitations
+This is a transparent Python regex/keyword baseline—not a trained LLM. It can identify surface cues, named-character changes, and selected setting shifts. It cannot reliably understand aliases, implied contradictions, intentional twists, chronology, visual continuity, wardrobe, props, or multilingual dialogue. Flags are editorial prompts, not proof. No flags does not mean the story is error-free.
+
+## Evaluation plan
+Test on editor-labeled adjacent episode pairs. Track precision, recall, false-positive rate, dismissal rate, and minutes saved. The proposed pilot target in docs/validation_plan.md is a goal, not a measured result.
 
 ## AI disclosure
-ChatGPT assisted drafting. Runtime uses Python regex/rules, not a trained LLM. Submitter must test and understand code.
+ChatGPT assisted with drafting and implementation. Runtime analysis is rule-based. The submitter should run tests, understand the code, verify deployment, and be able to explain design decisions before submission.
