@@ -48,7 +48,7 @@ class RecommendationRequest(BaseModel):
 
 @app.get("/api/ai-status")
 def ai_status():
-    return {"provider": "Groq", "configured": bool(os.getenv("GROQ_API_KEY")), "model": GROQ_MODEL}
+    return {"provider":"Groq","configured":bool(os.getenv("GROQ_API_KEY")),"model":GROQ_MODEL,"ps1":"Groq","ps2":"Groq","ps3":"Groq","tts_provider":"Groq","tts_model":os.getenv("GROQ_TTS_MODEL","canopylabs/orpheus-v1-english")}
 
 @app.post("/api/ps1/tag")
 def ps1_tag(req: TagRequest):
@@ -186,33 +186,38 @@ def heuristic_analyze(req):
 
 
 def analyze(req):
-    if os.getenv("GROQ_API_KEY"):
-        try:
-            ai = ai_story_review(req.show_name, req.previous_episode, req.next_episode)
-            findings = ai.get("findings", []) if isinstance(ai, dict) else []
-            findings = [x for x in findings if isinstance(x, dict)]
-            summary = ai.get("summary", {}) if isinstance(ai, dict) else {}
-            if not isinstance(summary, dict): summary = {}
-            if not findings:
-                findings = [{"severity":"info","category":"Review","title":"No findings returned","evidence":"The model returned no findings.","explanation":"No findings does not guarantee continuity correctness.","recommendation":"Review the episode pair manually.","confidence":0.1}]
-            return {
-                "show_name": req.show_name,
-                "summary": {"previous_chars":len(req.previous_episode),"next_chars":len(req.next_episode),"recurring_names":ai.get("recurring_characters",[]),"new_names":[],"flags":len(findings),"overall_assessment":summary.get("overall_assessment","Groq semantic review; human verification required."),"risk_level":summary.get("risk_level","review")},
-                "findings": findings,
-                "review_checklist": ai.get("continuity_checklist",[]) or ["Check chronology and time jumps","Verify aliases, character relationships, and motivations","Check props, injuries, settings, and character knowledge","Review cliffhangers and intentional reveals","Validate each finding against source text"],
-                "recurring_characters":ai.get("recurring_characters",[]),"unresolved_threads":ai.get("unresolved_threads",[]),
-                "analysis_provider":"Groq","analysis_model":GROQ_MODEL,"fallback_used":False,
-                "limitations":["LLM results can miss or misinterpret details; human review is required.","Aliases and nicknames may still be missed or merged.","Flags are review prompts, not factual conclusions.","Text-only: no video, audio, or visual evidence.","Multilingual quality depends on model coverage and is not independently benchmarked.","No findings does not prove continuity correctness."]
-            }
-        except Exception as exc:
-            result=heuristic_analyze(req)
-            result.update({"analysis_provider":"heuristic","analysis_model":"regex-keyword-baseline","fallback_used":True,"ai_fallback_reason":str(exc)[:200]})
-            result["limitations"]=["Groq failed; this is a weaker regex/keyword fallback.","Heuristic names may miss aliases, nicknames, and multilingual names.","Flags are review prompts, not factual conclusions.","Text-only: no video/audio/timestamp analysis.","No flags does not prove continuity correctness."]
-            return result
-    result=heuristic_analyze(req)
-    result.update({"analysis_provider":"heuristic","analysis_model":"regex-keyword-baseline","fallback_used":True})
-    result["limitations"]=["GROQ_API_KEY is missing; regex/keyword fallback used.","Heuristic names may miss aliases, nicknames, and multilingual names.","Flags are review prompts, not factual conclusions.","Text-only: no video/audio/timestamp analysis.","No flags does not prove continuity correctness."]
-    return result
+    """Run PS3 continuity analysis with Groq only; never silently downgrade to rules."""
+    ai = ai_story_review(req.show_name, req.previous_episode, req.next_episode)
+    if not isinstance(ai, dict):
+        raise HTTPException(status_code=502, detail="Groq returned an invalid continuity-review payload.")
+
+    findings = ai.get("findings", [])
+    if not isinstance(findings, list):
+        raise HTTPException(status_code=502, detail="Groq continuity response is missing a findings array.")
+    findings = [item for item in findings if isinstance(item, dict)]
+    summary = ai.get("summary", {})
+    if not isinstance(summary, dict): summary = {}
+    if not findings:
+        findings = [{"severity":"info","category":"Review","title":"No findings returned","evidence":"Groq returned no findings for this episode pair.","explanation":"An empty finding list does not guarantee continuity correctness.","recommendation":"Review the episode pair manually.","confidence":0.1}]
+
+    recurring = ai.get("recurring_characters", [])
+    unresolved = ai.get("unresolved_threads", [])
+    checklist = ai.get("continuity_checklist", [])
+    if not isinstance(recurring, list): recurring = []
+    if not isinstance(unresolved, list): unresolved = []
+    if not isinstance(checklist, list): checklist = []
+    return {
+        "show_name": req.show_name,
+        "summary": {"previous_chars":len(req.previous_episode),"next_chars":len(req.next_episode),"recurring_names":recurring,"new_names":[],"flags":len(findings),"overall_assessment":summary.get("overall_assessment","Groq semantic review; human verification required."),"risk_level":summary.get("risk_level","review")},
+        "findings": findings,
+        "review_checklist": checklist or ["Check chronology and time jumps","Verify aliases, character relationships, and motivations","Check props, injuries, settings, and character knowledge","Review cliffhangers and intentional reveals","Validate each finding against source text"],
+        "recurring_characters": recurring,
+        "unresolved_threads": unresolved,
+        "analysis_provider": "Groq",
+        "analysis_model": GROQ_MODEL,
+        "fallback_used": False,
+        "limitations": ["Groq can miss or misinterpret details; human review is required.","Aliases and nicknames may still be missed or merged.","Flags are review prompts, not factual conclusions.","Text-only: no video, audio, or visual evidence.","Multilingual quality depends on model coverage and is not independently benchmarked.","No findings does not prove continuity correctness."]
+    }
 
 class SpeechRequest(BaseModel):
     text: str = Field(min_length=1, max_length=200)
@@ -294,7 +299,7 @@ def analyze_series():
         "pair_count": len(pairs),
         "total_flags": total_flags,
         "pairs": pairs,
-        "note": "Groq semantic review is used when configured; heuristic fallback may be used. All flags require human review."
+        "provider": "Groq", "model": GROQ_MODEL, "note": "Every adjacent pair is analyzed with Groq. All flags require human review."
     }
 
 handler = app
