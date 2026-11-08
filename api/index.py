@@ -7,7 +7,7 @@ import os
 import json
 from groq import Groq
 
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+app = FastAPI(title="StoryBridge API", version="1.0.0")\n\nGROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 def groq_client():
     key = os.getenv("GROQ_API_KEY")
