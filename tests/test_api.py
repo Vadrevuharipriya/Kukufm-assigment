@@ -58,3 +58,63 @@ def test_groq_failure_is_not_silently_replaced_by_heuristic(monkeypatch):
         assert exc.status_code == 502
     else:
         raise AssertionError("Expected Groq error to propagate")
+
+
+def test_voice_reads_binary_api_response_bytes(monkeypatch):
+    class MockBinaryResponse:
+        def __init__(self, payload):
+            self.payload = payload
+            self.read_called = False
+
+        def read(self):
+            self.read_called = True
+            return self.payload
+
+    class MockSpeech:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def create(self, **kwargs):
+            assert kwargs["response_format"] == "wav"
+            return MockBinaryResponse(self.payload)
+
+    class MockAudio:
+        def __init__(self, payload):
+            self.speech = MockSpeech(payload)
+
+    class MockGroqClient:
+        def __init__(self, api_key):
+            self.audio = MockAudio(b"RIFFmock-wav-bytes")
+
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setattr(index, "Groq", MockGroqClient)
+    result = index.generate_voice(index.SpeechRequest(text="Hello StoryBridge"))
+    assert result.body == b"RIFFmock-wav-bytes"
+    assert result.media_type == "audio/wav"
+
+
+def test_voice_rejects_empty_binary_response(monkeypatch):
+    class EmptyResponse:
+        def read(self):
+            return b""
+
+    class MockSpeech:
+        def create(self, **kwargs):
+            return EmptyResponse()
+
+    class MockAudio:
+        speech = MockSpeech()
+
+    class MockGroqClient:
+        def __init__(self, api_key):
+            self.audio = MockAudio()
+
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    monkeypatch.setattr(index, "Groq", MockGroqClient)
+    try:
+        index.generate_voice(index.SpeechRequest(text="Hello"))
+    except HTTPException as exc:
+        assert exc.status_code == 502
+        assert "empty or unreadable" in exc.detail
+    else:
+        raise AssertionError("Expected empty audio response to fail")
