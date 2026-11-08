@@ -171,3 +171,12 @@ def test_groq_json_wraps_provider_errors(monkeypatch):
         assert "mock provider error" in exc.detail
     else:
         raise AssertionError("Expected Groq error to be converted to HTTP 502")
+
+
+
+def test_episode_chunking_preserves_newlines_and_all_text():
+    source = ("Line one\\n" + "Line two " * 20 + "\\n" + "Final line")
+    chunks = index.split_episode_text(source, max_chars=35)
+    assert len(chunks) > 1
+    assert "".join(chunks).replace(" ", "").replace("\\n", "") == source.replace(" ", "").replace("\\n", "")
+    assert all(len(chunk) <= 35 for chunk in chunks)
