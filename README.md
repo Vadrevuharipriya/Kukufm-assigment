@@ -400,3 +400,11 @@ The repository includes episode text files under `original_assignment_files/`. I
 ## AI / Implementation Disclosure
 
 AI assistance was used during drafting and implementation. PS1, PS2, and PS3 text analysis use Groq; voice preview uses Groq TTS. Outputs require human review. The developer should run tests, verify deployed behavior, understand the code, and be ready to explain architecture, API contracts, model limitations, and implementation trade-offs.
+
+## Groq implementation and regression-test notes
+
+All three problem statements (PS1, PS2, PS3) are intended to call Groq for text analysis. PS3 episode-pair comparisons and series scans use the Groq continuity-review helper; the service does not silently fall back to local regex analysis. Groq API errors should be surfaced clearly.
+
+Voice preview uses Groq TTS. The backend reads the SDK's binary response through its byte/read/stream interface instead of assuming a `.content` attribute. Regression tests cover PS3 provider wiring, no silent fallback, and TTS binary response/empty response handling.
+
+**Important:** Automated tests use mocked Groq responses and do not prove the live Groq API key, model access, TTS model availability, or Render deployment is working. Check GitHub Actions and perform a live Render smoke test before claiming production readiness.
