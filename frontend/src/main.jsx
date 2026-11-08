@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
 
@@ -22,6 +22,7 @@ function App() {
   const [mode, setMode] = useState('dataset');
   const [activeProblem, setActiveProblem] = useState('PS3');
   const [runs, setRuns] = useState([]);
+  const audioRef = useRef(null);
 
   useEffect(() => {
     fetch(`${API_BASE}/api/episodes`)
@@ -66,6 +67,34 @@ function App() {
     } catch(e) { setErr(`Series analysis failed: ${e.message}`); }
     finally { setBusy(false); }
   }
+
+  async function playVoicePreview(problem) {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setErr('');
+    try {
+      const text = `${problem.id}: ${problem.title}. ${problem.desc}`.slice(0, 200);
+      const response = await fetch(`${API_BASE}/api/voice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: 'autumn' })
+      });
+      if (!response.ok) throw new Error(await response.text());
+      const audioUrl = URL.createObjectURL(await response.blob());
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+      audio.onended = () => {
+        URL.revokeObjectURL(audioUrl);
+        if (audioRef.current === audio) audioRef.current = null;
+      };
+      await audio.play();
+    } catch (e) {
+      setErr(`Groq voice preview failed: ${e.message}`);
+    }
+  }
+
   const nav = [['home','⌂','Home'],['problems','▦','Problems'],['results','▥','Results'],['docs','▤','Docs']];
   const problems = [
     {id:'PS1', title:'Content Understanding & Tagging', desc:'Analyze audio or text and generate useful tags, categories, and metadata.', icon:'♫'},
@@ -87,7 +116,7 @@ function App() {
           <div className="hero-art" aria-hidden="true"><div className="soundwave">{Array.from({length:25},(_,i)=><i key={i} style={{height:(14+(Math.abs(Math.sin(i*.73))*75))+'px'}}/>)}</div><div className="headphone"><div className="ear left"></div><div className="ear right"></div><div className="headband"></div><div className="phone"><div className="phone-brand">KukuFM</div><div className="album-art"><span>♫</span></div><div className="phone-line"></div><div className="phone-controls">◂　●　▸</div></div></div><div className="book-stack"><span></span><span></span><span></span></div></div>
         </section>
         <div className="section-title"><div><h2>Problem Statements</h2><span className="title-underline"></span></div><div className="filters"><button className={activeProblem==='ALL'?'selected':''} onClick={()=>setActiveProblem('ALL')}>All (3)</button>{['PS1','PS2','PS3'].map(x=><button key={x} className={activeProblem===x?'selected':''} onClick={()=>setActiveProblem(x)}>{x}</button>)}</div></div>
-        <section className="problem-cards">{problems.filter(p=>activeProblem==='ALL'||p.id===activeProblem).map(p=><article className="problem-card" key={p.id}><div className={'card-art '+p.id.toLowerCase()}><span>{p.icon}</span></div><div className="card-main"><span className="problem-badge">{p.id}</span><h3>{p.title}</h3><p>{p.desc}</p></div><div className="fake-player"><button aria-label="Audio preview" onClick={()=>setErr('Audio preview is not connected to a source file yet.')}>▶</button><div className="waveform">{Array.from({length:42},(_,i)=><i key={i} style={{height:(5+Math.abs(Math.sin(i*1.3))*24)+'px'}}/>)}</div><small>00:00 / {p.id==='PS1'?'02:34':p.id==='PS2'?'03:21':'02:18'}</small></div><div className="card-actions"><button className="view-details" onClick={()=>{setActiveProblem(p.id);setView('problems')}}>View Details ›</button><button className="run-btn" onClick={()=>{setActiveProblem(p.id);setView('problems');if(p.id==='PS3')setTimeout(()=>document.getElementById('ps3-workspace')?.scrollIntoView({behavior:'smooth'}),100)}}>▶ Run {p.id}</button></div></article>)}</section>
+        <section className="problem-cards">{problems.filter(p=>activeProblem==='ALL'||p.id===activeProblem).map(p=><article className="problem-card" key={p.id}><div className={'card-art '+p.id.toLowerCase()}><span>{p.icon}</span></div><div className="card-main"><span className="problem-badge">{p.id}</span><h3>{p.title}</h3><p>{p.desc}</p></div><div className="fake-player"><button aria-label="Audio preview" onClick={()=>playVoicePreview(p)}>▶</button><div className="waveform">{Array.from({length:42},(_,i)=><i key={i} style={{height:(5+Math.abs(Math.sin(i*1.3))*24)+'px'}}/>)}</div><small>00:00 / {p.id==='PS1'?'02:34':p.id==='PS2'?'03:21':'02:18'}</small></div><div className="card-actions"><button className="view-details" onClick={()=>{setActiveProblem(p.id);setView('problems')}}>View Details ›</button><button className="run-btn" onClick={()=>{setActiveProblem(p.id);setView('problems');if(p.id==='PS3')setTimeout(()=>document.getElementById('ps3-workspace')?.scrollIntoView({behavior:'smooth'}),100)}}>▶ Run {p.id}</button></div></article>)}</section>
         <section className="lower-grid"><div className="recent-panel"><div className="panel-heading"><h3>Recent Runs</h3><button onClick={()=>setView('results')}>View All ›</button></div>{runs.length? <div className="table-wrap"><table><thead><tr><th>#</th><th>Problem</th><th>Input</th><th>Status</th><th>Time</th></tr></thead><tbody>{runs.map((r,i)=><tr key={r.id}><td>{i+1}</td><td>{r.problem}</td><td>{r.input}</td><td><span className="success-pill">✓ {r.status}</span></td><td>{r.time}</td></tr>)}</tbody></table></div>:<div className="empty-runs"><span>◷</span><b>No runs yet</b><p>Run a problem statement to see execution history here.</p></div>}</div>
           <div className="status-panel"><h3>Project Status</h3><div className="ci-status"><span>✓</span><div><b>CI/CD Passed</b><small>GitHub Actions · Build · Tests</small></div><a href="https://github.com/teambugbusters00/kuku-assignment-/actions/runs/42474486140" target="_blank" rel="noreferrer">View Run ↗</a></div><a className="status-row" href="https://github.com/teambugbusters00/kuku-assignment-" target="_blank" rel="noreferrer"><span>◉</span><b>GitHub Repository</b><small>teambugbusters00/kuku-assignment-</small>↗</a><a className="status-row" href="https://kukufm-assignment-frontend-kwao.onrender.com" target="_blank" rel="noreferrer"><span>◉</span><b>Frontend (Render)</b><small>Live frontend link</small>↗</a><a className="status-row" href="https://kukufm-assignment-api.onrender.com" target="_blank" rel="noreferrer"><span>▤</span><b>Backend API</b><small>API endpoint</small>↗</a></div></section>
       </> : view==='results' ? <section className="content-page"><h1>Execution Results</h1><p>Run a problem from the Home page to populate this list.</p>{out&&<ResultPanel out={out}/>}{series&&<pre>{JSON.stringify(series,null,2)}</pre>}</section> : view==='docs' ? <section className="content-page"><h1>Documentation</h1><p>Unified KukuFM assignment workspace. PS3 StoryBridge continuity analysis is available; PS1 and PS2 require their assignment-specific implementation.</p><a href="https://github.com/teambugbusters00/kuku-assignment-/blob/main/solution_doc.md" target="_blank" rel="noreferrer">Open solution documentation ↗</a></section> : null}
