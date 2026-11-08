@@ -20,6 +20,7 @@ function App() {
   const [loadingEpisodes, setLoadingEpisodes] = useState(true);
   const [err, setErr] = useState('');
   const [mode, setMode] = useState('dataset');
+  const [activeProblem, setActiveProblem] = useState('PS3');
 
   useEffect(() => {
     fetch(`${API_BASE}/api/episodes`)
@@ -87,6 +88,14 @@ function App() {
   }
 
   return <main>
+    <section className="problem-hub">
+      <div className="problem-hub-copy"><small>KUKUFM ASSIGNMENT · UNIFIED WORKSPACE</small><h2>One project. Three problem tracks.</h2><p>Switch between problem statements without leaving the app. StoryBridge continuity review is currently implemented under PS3.</p></div>
+      <div className="problem-switcher" role="tablist" aria-label="Problem statement selector">
+        {['PS1', 'PS2', 'PS3'].map(ps => <button key={ps} role="tab" aria-selected={activeProblem === ps} className={activeProblem === ps ? 'active' : ''} onClick={() => setActiveProblem(ps)}>{ps}</button>)}
+      </div>
+      {activeProblem === 'PS3' ? <div className="problem-status active-status"><b>PS3 · StoryBridge</b><span>Available · Episode continuity checker</span></div> : <div className="problem-status pending-status"><b>{activeProblem} · Module slot</b><span>Assignment-specific workflow not implemented yet; no fabricated results are shown.</span></div>}
+    </section>
+    {activeProblem === 'PS3' ? <>
     <header>
       <div className="logo">SB</div>
       <div><small>EDITOR TOOLKIT / STORY CONTINUITY</small><h1>StoryBridge</h1></div>
@@ -181,7 +190,8 @@ function App() {
       <button className="secondary" onClick={() => navigator.clipboard?.writeText(JSON.stringify(series, null, 2))}>Copy full-series JSON</button>
     </section>}
 
-    <footer>StoryBridge · BUG BUSTERS <span>Human-in-the-loop by design</span></footer>
+    <footer>StoryBridge · KukuFM unified workspace <span>Human-in-the-loop by design</span></footer>
+    </> : <section className="panel problem-placeholder"><small>{activeProblem} / MODULE</small><h3>{activeProblem} workspace</h3><p>This track is connected to the unified project shell. Its exact assignment-specific inputs, processing logic, and output format still need the original PS prompt.</p><ul><li>Dedicated input validation</li><li>Problem-specific processing</li><li>Raw output export</li><li>Shared report UI</li></ul><p className="note">This is a module placeholder, not a completed PS solution.</p></section>}
   </main>;
 }
 
