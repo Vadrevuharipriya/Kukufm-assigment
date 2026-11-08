@@ -6,7 +6,7 @@ A unified assignment workspace covering **three problem statements**:
 2. **PS2 — Personalized Audio Recommendation**
 3. **PS3 — StoryBridge: Microdrama Episode Continuity**
 
-The repository contains a React/Vite dashboard and a FastAPI backend. PS1 and PS2 have Groq-powered backend API routes. PS3 has an interactive frontend workflow and a transparent Python rule-based continuity analyzer.
+The repository contains a React/Vite dashboard and a FastAPI backend. PS1 and PS2 have Groq-powered backend API routes. The dashboard audio-preview buttons now call a Groq text-to-speech endpoint (Orpheus English). PS3 has an interactive frontend workflow and a transparent Python rule-based continuity analyzer.
 
 > **Implementation status:** The dashboard displays all three PS cards. PS1 and PS2 backend endpoints are implemented, but their complete interactive frontend forms/workflows are not yet connected in the current UI. PS3 has the functional episode-library/manual-text frontend workflow. Do not describe all three as end-to-end complete until PS1/PS2 frontend integration and deployment tests are finished.
 
@@ -147,7 +147,7 @@ The system returns findings and a checklist. A flag is a review prompt—not pro
 - Limitations section
 - Copy-report-JSON button
 
-The dashboard's audio preview buttons are currently visual placeholders; they do not play actual audio.
+The problem-card voice-preview buttons call `POST /api/voice` and play the returned WAV audio in the browser. The backend uses Groq TTS model `canopylabs/orpheus-v1-english` (English) with voice `autumn` by default. The current preview text is capped at 200 characters. This is generated narration for the card description, not playback of original KukuFM audio.
 
 ### Frontend configuration
 
@@ -184,13 +184,13 @@ Environment variables:
 | Variable | Purpose | Default |
 |---|---|---|
 | `GROQ_API_KEY` | Required secret for Groq requests | No default; configure privately in Render |
-| `GROQ_MODEL` | Model name sent to Groq | `llama-3.3-70b-versatile` |
+| `GROQ_MODEL` | Chat model for PS1/PS2 | `llama-3.3-70b-versatile` |\n| `GROQ_TTS_MODEL` | Text-to-speech model | `canopylabs/orpheus-v1-english` |\n| `GROQ_TTS_VOICE` | TTS voice persona | `autumn` |
 
 The model name must be available for your Groq account. If Groq returns a model-not-found/decommissioned error, update `GROQ_MODEL` to a currently supported model.
 
 **Never put `GROQ_API_KEY` in source code, README examples, frontend environment variables, or Git commits.** Keep it in Render's backend environment settings or a local untracked `.env` file.
 
-The `GET /api/ai-status` route reports whether the key is configured and which model name is set. It does not make a model inference request.
+The `GET /api/ai-status` route reports whether the key is configured and which chat model name is set. It does not make a model inference request. The same `GROQ_API_KEY` is used by PS1/PS2 chat and the voice-preview TTS endpoint.
 
 ### PS3 implementation note
 
@@ -203,7 +203,7 @@ The active PS3 endpoints use the local `analyze()` regex/keyword baseline. An AI
 | Method | Endpoint | Problem | Description |
 |---|---|---|---|
 | GET | `/` | General | Backend health check |
-| GET | `/api/ai-status` | PS1/PS2 | Groq key/model configuration status |
+| GET | `/api/ai-status` | PS1/PS2 | Groq key/model configuration status |\n| POST | `/api/voice` | Voice preview | Generate short WAV narration using Groq TTS |
 | POST | `/api/ps1/tag` | PS1 | Generate episode metadata/tags from transcript |
 | POST | `/api/ps2/recommend` | PS2 | Generate catalog-constrained recommendations |
 | GET | `/api/episodes` | PS3 | List dataset episode IDs, previews, and character counts |
@@ -214,11 +214,11 @@ The active PS3 endpoints use the local `analyze()` regex/keyword baseline. An AI
 ### Deployed API URLs
 
 - [Health check](https://kukufm-assignment-api.onrender.com/)
-- [AI configuration status](https://kukufm-assignment-api.onrender.com/api/ai-status)
+- [AI configuration status](https://kukufm-assignment-api.onrender.com/api/ai-status)\n- Voice preview: `POST https://kukufm-assignment-api.onrender.com/api/voice`
 - [Episode library](https://kukufm-assignment-api.onrender.com/api/episodes)
 - [Series scan](https://kukufm-assignment-api.onrender.com/api/analyze-series)
 
-The PS1 and PS2 endpoints use `POST` and require JSON request bodies. Test them with an HTTP client or API testing tool.
+The PS1 and PS2 endpoints use `POST` and require JSON request bodies. The voice endpoint also uses `POST` with a short text body (max 200 characters). Test them with an HTTP client or API testing tool.
 
 ### Example PS1 request
 
