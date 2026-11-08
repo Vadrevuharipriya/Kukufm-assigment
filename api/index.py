@@ -3,6 +3,97 @@ import re
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+import os
+import json
+from groq import Groq
+
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+
+def groq_client():
+    key = os.getenv("GROQ_API_KEY")
+    if not key:
+        raise HTTPException(status_code=503, detail="Groq is not configured. Add GROQ_API_KEY in Render environment variables.")
+    return Groq(api_key=key)
+
+def groq_json(system_prompt: str, user_prompt: str):
+    try:
+        response = groq_client().chat.completions.create(
+            model=GROQ_MODEL,
+            messages=[
+                {"role": "system", "content": system_prompt + " Return ONLY valid JSON. No markdown fences."},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"},
+        )
+        content = response.choices[0].message.content or "{}"
+        return json.loads(content)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Groq request failed: {str(exc)[:500]}")
+
+class TagRequest(BaseModel):
+    text: str = Field(min_length=20, max_length=30000)
+    title: str = Field(default="Untitled episode", max_length=200)
+    language: str = Field(default="auto", max_length=40)
+
+class RecommendationRequest(BaseModel):
+    user_profile: str = Field(min_length=5, max_length=10000)
+    catalog: str = Field(min_length=10, max_length=30000)
+    top_n: int = Field(default=5, ge=1, le=10)
+
+@app.get("/api/ai-status")
+def ai_status():
+    return {"provider": "Groq", "configured": bool(os.getenv("GROQ_API_KEY")), "model": GROQ_MODEL}
+
+@app.post("/api/ps1/tag")
+def ps1_tag(req: TagRequest):
+    result = groq_json(
+        "You are an audio-content metadata analyst. Extract grounded metadata from supplied episode transcript. Do not invent facts. Use concise tags.",
+        f"""Analyze this episode transcript.
+Title: {req.title}
+Language hint: {req.language}
+Transcript:
+{req.text}
+
+Return JSON with keys: title, summary (2-4 sentences), genre (array), tags (array of 5-15), themes (array), characters (array of objects with name and role_or_evidence), emotions (array), content_warnings (array), language, confidence (0-1), evidence_notes (array)."""
+    )
+    result["provider"] = "Groq"
+    result["model"] = GROQ_MODEL
+    return result
+
+@app.post("/api/ps2/recommend")
+def ps2_recommend(req: RecommendationRequest):
+    result = groq_json(
+        "You are a personalized audio-story recommendation engine. Recommend only items from the provided catalog. Never fabricate catalog titles or IDs. Explain relevance using profile signals.",
+        f"""User/listener profile:
+{req.user_profile}
+
+Available catalog (each line may contain title, genre, synopsis, id):
+{req.catalog}
+
+Return JSON with keys: recommendations (array of objects with rank, title, id_or_catalog_reference, match_score (0-100), reasons (array), why_this_fits (string), content_notes (array)), profile_signals (array), diversity_note (string). Return at most {req.top_n} recommendations."""
+    )
+    result["provider"] = "Groq"
+    result["model"] = GROQ_MODEL
+    return result
+
+def ai_story_review(show_name: str, previous_episode: str, next_episode: str):
+    return groq_json(
+        "You are a careful microdrama continuity editor. Identify only plausible continuity issues grounded in both texts. Distinguish explicit contradictions from unresolved questions and intentional cliffhangers. Never claim certainty without evidence.",
+        f"""Show: {show_name}
+
+PREVIOUS EPISODE:
+{previous_episode}
+
+NEXT EPISODE:
+{next_episode}
+
+Return JSON with keys: summary (object with overall_assessment, risk_level, flags), findings (array of objects with severity [high/review/info], category, title, evidence (quote/paraphrase from each episode), explanation, recommendation, confidence 0-1), recurring_characters (array), unresolved_threads (array), continuity_checklist (array), limitations (array)."""
+    )
+
+
 
 app = FastAPI(title="StoryBridge API", version="1.0.0")
 app.add_middleware(
