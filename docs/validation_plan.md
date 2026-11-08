@@ -99,7 +99,7 @@ Do not claim a quality score until this benchmark has actually been run. Model c
 - PS2 catalog grounding currently depends on prompt instructions unless code performs deterministic catalog validation.
 - Avoid sending confidential scripts or identifiable listener profiles to Groq without authorization.
 - Add authentication, rate limits, request-size controls, retention policy and access controls before production use.
-- A full-series scan makes one Groq request per adjacent pair; large datasets can hit rate limits and cost/latency limits.
+- A long PS3 episode may trigger multiple chunk-summary calls plus a final comparison. A full-series scan repeats this pipeline for every adjacent pair; large datasets can hit TPM/RPM limits and cost/latency limits. Chunking reduces oversized individual prompts but does not increase account quota.
 
 ## 7. Deployment smoke test
 
