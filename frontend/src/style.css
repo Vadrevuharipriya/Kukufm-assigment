@@ -35,3 +35,11 @@ details{color:#c8bdca;margin:16px 0}summary{cursor:pointer;display:flex;justify-
 details ul{padding-left:22px}li{margin:8px 0}.pair-count{color:#ff8db4;font-size:12px;white-space:nowrap}.pair .muted{padding:0 12px}
 footer{display:flex;justify-content:space-between;color:#817585;font-size:11px;padding:20px 0}
 @media(max-width:650px){main{padding:14px 12px 28px}header{align-items:flex-start;flex-wrap:wrap}.pill{margin-left:0}.grid{grid-template-columns:1fr}.panel{padding:16px}.hero{padding:30px 20px}.summary-grid{grid-template-columns:1fr}.recommend b{display:block;margin-bottom:5px}footer{gap:8px;flex-direction:column}.dataset-head .secondary{width:100%}.stats div{flex:1;min-width:110px}}
+
+
+/* Unified three-problem workspace */
+.problem-hub{margin:24px 0;padding:28px;border:1px solid rgba(255,255,255,.12);border-radius:22px;background:linear-gradient(135deg,rgba(120,65,180,.24),rgba(255,95,120,.12));display:flex;flex-direction:column;gap:18px}
+.problem-hub-copy h2{margin:8px 0;font-size:clamp(24px,4vw,36px)}.problem-hub-copy p{max-width:720px;color:var(--muted,#a9a5b5);line-height:1.6}
+.problem-switcher{display:flex;gap:10px;flex-wrap:wrap}.problem-switcher button{padding:10px 22px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.04);color:inherit;font-weight:700;cursor:pointer}.problem-switcher button.active{background:linear-gradient(120deg,#ff6b8a,#a56bff);border-color:transparent;color:#fff}
+.problem-status{display:flex;flex-direction:column;gap:5px;padding:14px 16px;border-radius:12px}.problem-status span{font-size:14px;line-height:1.5}.active-status{background:rgba(90,190,140,.1);border:1px solid rgba(90,190,140,.25)}.pending-status{background:rgba(255,190,90,.08);border:1px solid rgba(255,190,90,.22)}.problem-placeholder{min-height:300px}.problem-placeholder li{margin:8px 0}
+@media(min-width:700px){.problem-hub{flex-direction:row;align-items:center;justify-content:space-between}.problem-hub-copy{flex:1}.problem-switcher{align-self:flex-start}}
