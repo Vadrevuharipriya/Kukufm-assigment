@@ -237,8 +237,25 @@ def generate_voice(req: SpeechRequest):
             input=req.text,
             response_format="wav",
         )
+
+        # Groq SDK versions return BinaryAPIResponse (streaming HTTP response),
+        # not an object exposing .content. Read the raw bytes via its supported
+        # stream/read interface, with compatibility for SDK response variants.
+        audio_bytes = None
+        if isinstance(response, (bytes, bytearray)):
+            audio_bytes = bytes(response)
+        elif hasattr(response, "read"):
+            audio_bytes = response.read()
+        elif hasattr(response, "iter_bytes"):
+            audio_bytes = b"".join(response.iter_bytes())
+        elif hasattr(response, "content") and isinstance(response.content, (bytes, bytearray)):
+            audio_bytes = bytes(response.content)
+
+        if not audio_bytes:
+            raise RuntimeError("Groq TTS returned an empty or unreadable audio response.")
+
         return Response(
-            content=response.content,
+            content=audio_bytes,
             media_type="audio/wav",
             headers={"Cache-Control": "no-store", "X-TTS-Provider": "Groq", "X-TTS-Model": model},
         )
