@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './style.css';
 
-const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://kukufm-assignment-api.onrender.com' : '');
+const API_BASE = (import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://kukufm-assignment-api.onrender.com' : '')).trim().replace(/\\/+$/, '');
 const repo = 'https://github.com/teambugbusters00/kuku-assignment-';
 const demoA = "Maya entered the hospital with a blood-stained letter. She told her brother Arjun their father was alive and hid evidence in the mansion. Arjun owns the silver key. Maya promised to return before midnight.";
 const demoB = "The next morning Maya arrives at the police station. Arjun says their father died years ago and the silver key was stolen. Maya asks the detective to find the letter.";
@@ -12,6 +12,35 @@ const docs = {
   PS2: { filename: 'KukuFM_PS2_Personalized_Recommendation.md', title: 'PS2 — Personalized Audio Recommendation', body: 'Input: listener profile, supplied catalog, and top_n. Endpoint: POST /api/ps2/recommend. Groq returns ranked catalog recommendations, match scores, reasons, profile signals, and diversity notes. Current catalog-only constraint is prompt-based; validate returned IDs against the submitted catalog before production.' },
   PS3: { filename: 'KukuFM_PS3_StoryBridge_Continuity.md', title: 'PS3 — StoryBridge Episode Continuity Checker', body: 'Input: previous and next episode text or dataset episode IDs. Endpoints: POST /api/analyze, POST /api/analyze-episodes, GET /api/analyze-series. Current analyzer uses transparent regex/keyword heuristics for life status, relationship, possession, names, and setting. Findings are editorial review signals, not definitive judgments.' }
 };
+
+async function apiFetch(path, options={}) {
+  const url = `${API_BASE}${path}`;
+  let response;
+  try {
+    response = await fetch(url, {
+      ...options,
+      signal: options.signal || AbortSignal.timeout(90000),
+      headers: { ...(options.headers || {}) }
+    });
+  } catch (error) {
+    if (error.name === 'TimeoutError' || error.name === 'AbortError') {
+      throw new Error(`Backend request timed out after 90 seconds. Render may be waking up; retry once. API: ${API_BASE || '(same origin)'}`);
+    }
+    throw new Error(`Cannot reach backend API (${API_BASE || window.location.origin}). Check Render backend status, VITE_API_URL, and CORS. Browser detail: ${error.message || 'network error'}`);
+  }
+  if (!response.ok) {
+    let detail = `HTTP ${response.status} ${response.statusText}`;
+    try {
+      const payload = await response.json();
+      detail = payload.detail || payload.message || JSON.stringify(payload);
+    } catch {
+      const text = await response.text().catch(() => '');
+      if (text) detail = text.slice(0, 700);
+    }
+    throw new Error(detail);
+  }
+  return response;
+}
 
 function downloadFile(filename, content, type='application/json') {
   const blob = new Blob([content], {type});
@@ -49,7 +78,7 @@ function App() {
   const audioRef=useRef(null);
 
   useEffect(()=>{
-    fetch(`${API_BASE}/api/episodes`).then(r=>{if(!r.ok)throw new Error('Could not load episode library');return r.json();})
+    apiFetch('/api/episodes').then(r=>r.json())
       .then(data=>{setEpisodes(data.episodes||[]);if(data.episodes?.length>1){setPrevId(data.episodes[0].id);setNextId(data.episodes[1].id);}})
       .catch(e=>setErr(`Episode library unavailable: ${e.message}`)).finally(()=>setLoadingEpisodes(false));
   },[]);
@@ -61,8 +90,7 @@ function App() {
   async function requestAnalysis(endpoint,body,label,inputLabel){
     setBusy(true);setErr('');setOut(null);setSeries(null);const started=Date.now();
     try{
-      const r=await fetch(`${API_BASE}${endpoint}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-      if(!r.ok)throw new Error(await r.text());
+      const r=await apiFetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
       const data=await r.json();setOut(data);recordRun(label,inputLabel,data,started);
     }catch(e){setErr(`Request failed: ${e.message}`);}
     finally{setBusy(false);}
@@ -84,7 +112,7 @@ function App() {
   }
   async function analyzeSeries(){
     setBusy(true);setErr('');setOut(null);setSeries(null);const started=Date.now();
-    try{const r=await fetch(`${API_BASE}/api/analyze-series`);if(!r.ok)throw new Error(await r.text());const data=await r.json();setSeries(data);recordRun('PS3 · Full series scan','Episode library',data,started);}
+    try{const r=await apiFetch('/api/analyze-series');const data=await r.json();setSeries(data);recordRun('PS3 · Full series scan','Episode library',data,started);}
     catch(e){setErr(`Series scan failed: ${e.message}`);}finally{setBusy(false);}
   }
   async function playVoicePreview(problem){
@@ -92,8 +120,7 @@ function App() {
     setErr('');setAudioLoading(true);
     try{
       const text=`${problem.id}: ${problem.title}. ${problem.desc}`.slice(0,200);
-      const r=await fetch(`${API_BASE}/api/voice`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,voice:'autumn'})});
-      if(!r.ok)throw new Error(await r.text());
+      const r=await apiFetch('/api/voice',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text,voice:'autumn'})});
       const url=URL.createObjectURL(await r.blob());const audio=new Audio(url);audioRef.current=audio;
       audio.onended=()=>{URL.revokeObjectURL(url);if(audioRef.current===audio)audioRef.current=null;};
       await audio.play();
