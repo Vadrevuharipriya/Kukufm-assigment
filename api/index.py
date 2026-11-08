@@ -151,7 +151,7 @@ def names(text):
     words = re.findall(r"\b[A-Z][a-z]{2,}(?:\s+[A-Z][a-z]{2,})?\b", text)
     return sorted({x for x in words if x not in STOP_NAMES})
 
-def analyze(req):
+def heuristic_analyze(req):
     a, b = req.previous_episode, req.next_episode
     al, bl = a.lower(), b.lower()
     an, bn = set(names(a)), set(names(b))
@@ -183,6 +183,36 @@ def analyze(req):
         "limitations": ["Transparent regex/keyword baseline, not a trained LLM.", "Name extraction is heuristic; aliases and nicknames may be missed.", "Flags are review prompts, not factual conclusions.", "No video, timestamp, or multilingual analysis."]
     }
 
+
+
+def analyze(req):
+    if os.getenv("GROQ_API_KEY"):
+        try:
+            ai = ai_story_review(req.show_name, req.previous_episode, req.next_episode)
+            findings = ai.get("findings", []) if isinstance(ai, dict) else []
+            findings = [x for x in findings if isinstance(x, dict)]
+            summary = ai.get("summary", {}) if isinstance(ai, dict) else {}
+            if not isinstance(summary, dict): summary = {}
+            if not findings:
+                findings = [{"severity":"info","category":"Review","title":"No findings returned","evidence":"The model returned no findings.","explanation":"No findings does not guarantee continuity correctness.","recommendation":"Review the episode pair manually.","confidence":0.1}]
+            return {
+                "show_name": req.show_name,
+                "summary": {"previous_chars":len(req.previous_episode),"next_chars":len(req.next_episode),"recurring_names":ai.get("recurring_characters",[]),"new_names":[],"flags":len(findings),"overall_assessment":summary.get("overall_assessment","Groq semantic review; human verification required."),"risk_level":summary.get("risk_level","review")},
+                "findings": findings,
+                "review_checklist": ai.get("continuity_checklist",[]) or ["Check chronology and time jumps","Verify aliases, character relationships, and motivations","Check props, injuries, settings, and character knowledge","Review cliffhangers and intentional reveals","Validate each finding against source text"],
+                "recurring_characters":ai.get("recurring_characters",[]),"unresolved_threads":ai.get("unresolved_threads",[]),
+                "analysis_provider":"Groq","analysis_model":GROQ_MODEL,"fallback_used":False,
+                "limitations":["LLM results can miss or misinterpret details; human review is required.","Aliases and nicknames may still be missed or merged.","Flags are review prompts, not factual conclusions.","Text-only: no video, audio, or visual evidence.","Multilingual quality depends on model coverage and is not independently benchmarked.","No findings does not prove continuity correctness."]
+            }
+        except Exception as exc:
+            result=heuristic_analyze(req)
+            result.update({"analysis_provider":"heuristic","analysis_model":"regex-keyword-baseline","fallback_used":True,"ai_fallback_reason":str(exc)[:200]})
+            result["limitations"]=["Groq failed; this is a weaker regex/keyword fallback.","Heuristic names may miss aliases, nicknames, and multilingual names.","Flags are review prompts, not factual conclusions.","Text-only: no video/audio/timestamp analysis.","No flags does not prove continuity correctness."]
+            return result
+    result=heuristic_analyze(req)
+    result.update({"analysis_provider":"heuristic","analysis_model":"regex-keyword-baseline","fallback_used":True})
+    result["limitations"]=["GROQ_API_KEY is missing; regex/keyword fallback used.","Heuristic names may miss aliases, nicknames, and multilingual names.","Flags are review prompts, not factual conclusions.","Text-only: no video/audio/timestamp analysis.","No flags does not prove continuity correctness."]
+    return result
 
 class SpeechRequest(BaseModel):
     text: str = Field(min_length=1, max_length=200)
@@ -264,7 +294,7 @@ def analyze_series():
         "pair_count": len(pairs),
         "total_flags": total_flags,
         "pairs": pairs,
-        "note": "Automated keyword/name heuristics only. Review flags manually; no flags does not mean the story is error-free."
+        "note": "Groq semantic review is used when configured; heuristic fallback may be used. All flags require human review."
     }
 
 handler = app
