@@ -184,9 +184,9 @@ Environment variables:
 | Variable | Purpose | Default |
 |---|---|---|
 | `GROQ_API_KEY` | Required secret for Groq requests | No default; configure privately in Render |
-| `GROQ_MODEL` | Chat model for PS1/PS2 | `openai/gpt-oss-120b` |\n| `GROQ_TTS_MODEL` | Text-to-speech model | `canopylabs/orpheus-v1-english` |\n| `GROQ_TTS_VOICE` | TTS voice persona | `autumn` |
+| `GROQ_MODEL` | Chat model for PS1/PS2 | `qwen/qwen3.8-27b` |\n| `GROQ_TTS_MODEL` | Text-to-speech model | `canopylabs/orpheus-v1-english` |\n| `GROQ_TTS_VOICE` | TTS voice persona | `autumn` |
 
-Default is `openai/gpt-oss-120b`, replacing the retired `llama-3.3-70b-versatile` model. Verify the model ID against Groq's current supported-model list and your account access before deployment.
+Default is `qwen/qwen3.8-27b`. `GROQ_MODEL` controls PS1/PS2/PS3 text analysis; `GROQ_TTS_MODEL` remains a separate voice-preview model. Long PS3 transcripts are summarized in chunks before continuity comparison to reduce oversized prompts. Chunking increases the number of Groq calls and does not eliminate TPM/RPM limits; handle rate-limit responses and retry later when needed.
 
 **Never put `GROQ_API_KEY` in source code, README examples, frontend environment variables, or Git commits.** Keep it in Render's backend environment settings or a local untracked `.env` file.
 
@@ -336,7 +336,7 @@ uvicorn api.index:app --host 0.0.0.0 --port $PORT
 Configure these in the Render backend service:
 
 - `GROQ_API_KEY` — required for PS1, PS2, PS3, and TTS
-- `GROQ_MODEL` — optional override for the Groq chat model (default: `openai/gpt-oss-120b`)
+- `GROQ_MODEL` — optional override for the Groq chat model (default: `qwen/qwen3.8-27b`)
 - `GROQ_TTS_MODEL` — optional TTS model override (default: `canopylabs/orpheus-v1-english`)
 - `GROQ_TTS_VOICE` — optional TTS voice override (default: `autumn`; confirm supported voice/model combination)
 
@@ -369,7 +369,7 @@ python -m pip install pytest
 python -m pytest -q
 ```
 
-The regression suite covers Groq PS1/PS2/PS3 wiring, PS3 no-fallback behavior, Groq provider error handling, and TTS binary audio response/empty-response behavior. Tests use mocked Groq responses and do not validate live API access. See [docs/validation_plan.md](docs/validation_plan.md) for the complete test matrix, API cases, frontend checklist, and deployment smoke test.
+The regression suite covers Groq PS1/PS2/PS3 wiring, PS3 no-fallback behavior, chunked transcript handling, Groq provider error handling, and TTS binary audio response/empty-response behavior. Tests use mocked Groq responses and do not validate live API access. See [docs/validation_plan.md](docs/validation_plan.md) for the complete test matrix, API cases, frontend checklist, and deployment smoke test.
 
 ## Quality, Evaluation & Limitations
 
