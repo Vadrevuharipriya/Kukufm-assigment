@@ -335,8 +335,10 @@ uvicorn api.index:app --host 0.0.0.0 --port $PORT
 
 Configure these in the Render backend service:
 
-- `GROQ_API_KEY` — required for PS1 and PS2 inference
-- `GROQ_MODEL` — optional override for the model identifier
+- `GROQ_API_KEY` — required for PS1, PS2, PS3, and TTS
+- `GROQ_MODEL` — optional override for the Groq chat model (default: `openai/gpt-oss-120b`)
+- `GROQ_TTS_MODEL` — optional TTS model override (default: `canopylabs/orpheus-v1-english`)
+- `GROQ_TTS_VOICE` — optional TTS voice override (default: `autumn`; confirm supported voice/model combination)
 
 ### Frontend environment variable
 
@@ -357,6 +359,18 @@ Configure these in the Render backend service:
 
 ---
 
+## Automated tests
+
+Run from the repository root:
+
+```bash
+python -m pip install -r requirements.txt
+python -m pip install pytest
+python -m pytest -q
+```
+
+The regression suite covers Groq PS1/PS2/PS3 wiring, PS3 no-fallback behavior, Groq provider error handling, and TTS binary audio response/empty-response behavior. Tests use mocked Groq responses and do not validate live API access. See [docs/validation_plan.md](docs/validation_plan.md) for the complete test matrix, API cases, frontend checklist, and deployment smoke test.
+
 ## Quality, Evaluation & Limitations
 
 ### PS1 limitations
@@ -375,11 +389,10 @@ Configure these in the Render backend service:
 
 ### PS3 limitations
 
-- Character-name extraction is heuristic; aliases and nicknames may be missed.
-- Keyword contrasts can flag intentional twists or miss implied contradictions.
-- Complex timeline, visual, wardrobe, blocking, prop, and timestamp continuity are not comprehensively checked.
-- Multilingual and semantic nuance are not reliably analyzed.
-- Findings are review prompts, not editorial verdicts.
+- PS3 uses Groq semantic continuity analysis; it can still miss aliases/nicknames, misread context, or flag intentional twists.
+- Complex timeline, video, wardrobe, blocking, prop visuals, and timestamp continuity are not comprehensively checked.
+- Multilingual quality depends on the model and is not independently benchmarked.
+- Findings are review prompts, not editorial verdicts. Groq failures are surfaced; PS3 does not silently fall back to regex rules.
 
 ### Suggested evaluation
 
@@ -405,6 +418,6 @@ AI assistance was used during drafting and implementation. PS1, PS2, and PS3 tex
 
 All three problem statements (PS1, PS2, PS3) are intended to call Groq for text analysis. PS3 episode-pair comparisons and series scans use the Groq continuity-review helper; the service does not silently fall back to local regex analysis. Groq API errors should be surfaced clearly.
 
-Voice preview uses Groq TTS. The backend reads the SDK's binary response through its byte/read/stream interface instead of assuming a `.content` attribute. Regression tests cover PS3 provider wiring, no silent fallback, and TTS binary response/empty response handling.
+Voice preview uses Groq TTS. The backend uses the Groq Python SDK's documented `write_to_file(path)` method for the `BinaryAPIResponse`, then returns the audio bytes. It does not assume a `.content` attribute. Regression tests cover PS1/PS2/PS3 Groq wiring, PS3 no-fallback behavior, provider errors, and TTS binary response/empty response handling.
 
 **Important:** Automated tests use mocked Groq responses and do not prove the live Groq API key, model access, TTS model availability, or Render deployment is working. Check GitHub Actions and perform a live Render smoke test before claiming production readiness.
