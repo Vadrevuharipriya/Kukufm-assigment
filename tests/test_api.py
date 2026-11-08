@@ -64,11 +64,10 @@ def test_voice_reads_binary_api_response_bytes(monkeypatch):
     class MockBinaryResponse:
         def __init__(self, payload):
             self.payload = payload
-            self.read_called = False
 
-        def read(self):
-            self.read_called = True
-            return self.payload
+        def write_to_file(self, path):
+            with open(path, "wb") as audio_file:
+                audio_file.write(self.payload)
 
     class MockSpeech:
         def __init__(self, payload):
@@ -95,8 +94,9 @@ def test_voice_reads_binary_api_response_bytes(monkeypatch):
 
 def test_voice_rejects_empty_binary_response(monkeypatch):
     class EmptyResponse:
-        def read(self):
-            return b""
+        def write_to_file(self, path):
+            with open(path, "wb") as audio_file:
+                audio_file.write(b"")
 
     class MockSpeech:
         def create(self, **kwargs):
