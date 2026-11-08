@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import os
@@ -181,6 +182,33 @@ def analyze(req):
         "review_checklist": ["Confirm timeline and elapsed time", "Verify relationships and motivations", "Check props, injuries, and wardrobe", "Ensure the opening gives returning viewers context", "Confirm cliffhangers have a deliberate payoff"],
         "limitations": ["Transparent regex/keyword baseline, not a trained LLM.", "Name extraction is heuristic; aliases and nicknames may be missed.", "Flags are review prompts, not factual conclusions.", "No video, timestamp, or multilingual analysis."]
     }
+
+
+class SpeechRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=200)
+    voice: str = Field(default=os.getenv("GROQ_TTS_VOICE", "autumn"), max_length=30)
+
+@app.post("/api/voice")
+def generate_voice(req: SpeechRequest):
+    """Generate short audio previews through Groq TTS without exposing the API key."""
+    key = os.getenv("GROQ_API_KEY")
+    if not key:
+        raise HTTPException(status_code=503, detail="Groq is not configured. Add GROQ_API_KEY in backend environment variables.")
+    model = os.getenv("GROQ_TTS_MODEL", "canopylabs/orpheus-v1-english")
+    try:
+        response = Groq(api_key=key).audio.speech.create(
+            model=model,
+            voice=req.voice,
+            input=req.text,
+            response_format="wav",
+        )
+        return Response(
+            content=response.content,
+            media_type="audio/wav",
+            headers={"Cache-Control": "no-store", "X-TTS-Provider": "Groq", "X-TTS-Model": model},
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Groq TTS request failed: {str(exc)[:400]}")
 
 @app.get("/")
 def health():
