@@ -14,3 +14,11 @@ React/Vite UI, FastAPI endpoint, and Groq chat-completions for semantic continui
 Groq may miss implicit contradictions, misinterpret context, or flag intentional twists. Video, wardrobe, blocking, and timestamps are not checked. Groq API errors are surfaced; the service does not silently fall back to regex rules. No performance claims. Validate on 20 editor-reviewed pairs; measure precision, recall, false positives, editor dismissal, and minutes saved. Proposed pilot goal: 60%+ high-severity flags judged useful and measurable time savings. Not yet measured.
 
 AI disclosure: ChatGPT assisted drafting; runtime PS3 analysis uses Groq. Submitter must test and understand code.
+
+## Groq implementation and regression-test notes
+
+All three problem statements (PS1, PS2, PS3) are intended to call Groq for text analysis. PS3 episode-pair comparisons and series scans use the Groq continuity-review helper; the service does not silently fall back to local regex analysis. Groq API errors should be surfaced clearly.
+
+Voice preview uses Groq TTS. The backend reads the SDK's binary response through its byte/read/stream interface instead of assuming a `.content` attribute. Regression tests cover PS3 provider wiring, no silent fallback, and TTS binary response/empty response handling.
+
+**Important:** Automated tests use mocked Groq responses and do not prove the live Groq API key, model access, TTS model availability, or Render deployment is working. Check GitHub Actions and perform a live Render smoke test before claiming production readiness.
