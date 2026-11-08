@@ -174,9 +174,12 @@ def test_groq_json_wraps_provider_errors(monkeypatch):
 
 
 
-def test_episode_chunking_preserves_newlines_and_all_text():
-    source = ("Line one\\n" + "Line two " * 20 + "\\n" + "Final line")
+def test_episode_chunking_preserves_content_across_newlines():
+    source = "alpha beta gamma\n" + "delta epsilon zeta eta theta " * 5 + "\nfinal line"
     chunks = index.split_episode_text(source, max_chars=35)
     assert len(chunks) > 1
-    assert "".join(chunks).replace(" ", "").replace("\\n", "") == source.replace(" ", "").replace("\\n", "")
+    # The splitter may normalize whitespace at chunk boundaries, but must not lose words.
+    normalized_source = " ".join(source.split())
+    normalized_chunks = " ".join(" ".join(chunk.split()) for chunk in chunks)
+    assert normalized_chunks == normalized_source
     assert all(len(chunk) <= 35 for chunk in chunks)
