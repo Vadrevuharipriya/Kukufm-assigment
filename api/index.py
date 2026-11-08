@@ -10,7 +10,7 @@ from groq import Groq
 
 app = FastAPI(title="StoryBridge API", version="1.0.0")
 
-GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
 def groq_client():
     key = os.getenv("GROQ_API_KEY")
