@@ -244,10 +244,10 @@ def generate_voice(req: SpeechRequest):
         audio_bytes = None
         if isinstance(response, (bytes, bytearray)):
             audio_bytes = bytes(response)
-        elif hasattr(response, "read"):
-            audio_bytes = response.read()
         elif hasattr(response, "iter_bytes"):
             audio_bytes = b"".join(response.iter_bytes())
+        elif hasattr(response, "read"):
+            audio_bytes = response.read()
         elif hasattr(response, "content") and isinstance(response.content, (bytes, bytearray)):
             audio_bytes = bytes(response.content)
 
