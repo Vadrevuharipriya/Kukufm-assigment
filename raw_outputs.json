@@ -1,0 +1,12 @@
+{
+  "project": "StoryBridge",
+  "dataset": "original_assignment_files/",
+  "generated_at": null,
+  "analysis_type": "episode_continuity_scan",
+  "status": "template",
+  "note": "This file is the raw-output structure. Run the deployed/local analysis and replace this template with the actual API response. Do not treat this template as measured results.",
+  "episode_count": null,
+  "pair_count": null,
+  "total_flags": null,
+  "pairs": []
+}
