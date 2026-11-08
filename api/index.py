@@ -238,15 +238,15 @@ def generate_voice(req: SpeechRequest):
             response_format="wav",
         )
 
-        # Groq SDK's BinaryAPIResponse provides stream_to_file(); do not
-        # assume it has a .content property or a raw .read() method.
+        # Groq's Python SDK documents BinaryAPIResponse.write_to_file().
+        # It does not guarantee a .content attribute.
         import tempfile
 
         if isinstance(response, (bytes, bytearray)):
             audio_bytes = bytes(response)
-        elif hasattr(response, "stream_to_file"):
+        elif hasattr(response, "write_to_file"):
             with tempfile.NamedTemporaryFile(suffix=".wav") as audio_file:
-                response.stream_to_file(audio_file.name)
+                response.write_to_file(audio_file.name)
                 audio_file.seek(0)
                 audio_bytes = audio_file.read()
         elif hasattr(response, "iter_bytes"):
