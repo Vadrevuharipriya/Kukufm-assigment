@@ -6,9 +6,9 @@ A unified assignment workspace covering **three problem statements**:
 2. **PS2 — Personalized Audio Recommendation**
 3. **PS3 — StoryBridge: Microdrama Episode Continuity**
 
-The repository contains a React/Vite dashboard and a FastAPI backend. PS1 and PS2 have Groq-powered backend API routes. The dashboard audio-preview buttons now call a Groq text-to-speech endpoint (Orpheus English). PS3 has an interactive frontend workflow and a transparent Python rule-based continuity analyzer.
+The repository contains a React/Vite dashboard and FastAPI backend. PS1 metadata extraction, PS2 recommendations, PS3 episode continuity review, full-series scans, and narration use Groq APIs. PS3 no longer silently falls back to a local rule-based analyzer: if Groq is unavailable or errors, the endpoint returns an error.
 
-> **Implementation status:** The frontend now includes interactive workspaces for PS1, PS2, and PS3. PS1/PS2 call their Groq backend endpoints; PS3 supports dataset/manual comparison and series scanning. Each successful run can be downloaded as JSON, and the Results page retains all run responses in the current browser session. Verify the latest Render deployment before treating the live site as updated.
+> **Implementation status:** The frontend now includes interactive workspaces for PS1, PS2, and PS3. PS1, PS2, and PS3 call Groq backend endpoints; PS3 supports dataset/manual comparison and a Groq-powered series scan. Each successful run can be downloaded as JSON, and the Results page retains all run responses in the current browser session. Verify the latest Render deployment before treating the live site as updated.
 
 ## Quick Links
 
@@ -105,7 +105,7 @@ The Groq prompt tells the model to recommend only titles/items present in the su
 - Use the human-review checklist.
 - Copy the structured report as JSON.
 
-**Current analyzer:** Python regex/keyword and heuristic name extraction. It is not an LLM continuity verdict.
+**Analyzer:** Groq semantic continuity review using the configured `GROQ_MODEL`. It is an editorial aid, not a factual verdict. Groq failures are surfaced as API errors rather than silently switching to a weaker heuristic.
 
 Signals include:
 
@@ -172,12 +172,12 @@ Set `VITE_API_URL` in the frontend hosting environment if you need a different b
 - Exposes health, AI status, episode library, tagging, recommendation, and continuity endpoints.
 - Validates request payloads with Pydantic.
 - Calls Groq for PS1 metadata extraction and PS2 recommendation generation.
-- Uses local Python rules for the PS3 continuity analysis.
+- Calls Groq for PS3 continuity review and full-series adjacent episode analysis.
 - Returns JSON responses and HTTP errors for missing configuration or upstream AI failures.
 
 ### AI provider configuration
 
-PS1 and PS2 use **Groq** through the Groq Python SDK.
+PS1, PS2, and PS3 use **Groq** through the Groq Python SDK.
 
 Environment variables:
 
@@ -194,7 +194,7 @@ The `GET /api/ai-status` route reports whether the key is configured and which c
 
 ### PS3 implementation note
 
-The active PS3 endpoints use the local `analyze()` regex/keyword baseline. An AI-based continuity review helper exists in the backend source, but it is not currently the analyzer called by the PS3 routes. Do not describe PS3 as Groq-powered unless the route wiring is changed and tested.
+PS3 manual comparisons, dataset comparisons, and full-series scans call the `ai_story_review()` Groq helper through `analyze()`. There is no local heuristic fallback. Missing `GROQ_API_KEY` returns a configuration error; upstream Groq failures return an API error. Full-series scans make one Groq request per adjacent episode pair, so latency and rate limits depend on dataset size and Groq account limits.
 
 ---
 
@@ -350,8 +350,8 @@ Configure these in the Render backend service:
 - [ ] PS1 tagging route works with valid transcript input.
 - [ ] PS2 recommendation route returns items grounded in the submitted catalog.
 - [ ] PS3 episode library loads.
-- [ ] PS3 manual and dataset pair comparisons work.
-- [ ] PS3 series scan returns adjacent-pair reports.
+- [ ] PS3 manual and dataset pair comparisons work with Groq configured.
+- [ ] PS3 series scan returns Groq-generated adjacent-pair reports.
 - [ ] Browser console and Render logs contain no blocking errors.
 - [ ] PS1 and PS2 frontend workflows are integrated before claiming all three are end-to-end complete.
 
@@ -399,4 +399,4 @@ The repository includes episode text files under `original_assignment_files/`. I
 
 ## AI / Implementation Disclosure
 
-AI assistance was used during drafting and implementation. PS1 and PS2 backend requests use Groq; PS3's current route uses rule-based Python analysis. The developer should run tests, verify deployed behavior, understand the code, and be ready to explain architecture, API contracts, model limitations, and implementation trade-offs.
+AI assistance was used during drafting and implementation. PS1, PS2, and PS3 text analysis use Groq; voice preview uses Groq TTS. Outputs require human review. The developer should run tests, verify deployed behavior, understand the code, and be ready to explain architecture, API contracts, model limitations, and implementation trade-offs.
