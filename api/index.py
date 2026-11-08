@@ -10,7 +10,7 @@ from groq import Groq
 
 app = FastAPI(title="StoryBridge API", version="1.0.0")
 
-GROQ_MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "qwen/qwen3.8-27b")
 
 def groq_client():
     key = os.getenv("GROQ_API_KEY")
@@ -84,13 +84,13 @@ Return JSON with keys: recommendations (array of objects with rank, title, id_or
     return result
 
 def split_episode_text(text: str, max_chars: int = 4500):
-    """Split long transcripts into bounded, overlapping chunks without dropping content."""
+    """Split long transcripts into bounded, non-overlapping chunks without dropping content."""
     text = (text or "").strip()
     if not text:
         return [""]
     chunks = []
     while len(text) > max_chars:
-        cut = text.rfind("\\n", 0, max_chars)
+        cut = text.rfind("\n", 0, max_chars)
         if cut < max_chars // 2:
             cut = text.rfind(" ", 0, max_chars)
         if cut < max_chars // 2:
