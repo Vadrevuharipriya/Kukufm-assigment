@@ -101,5 +101,67 @@ function App() {
     </main>
   </div>;
 }
-function ResultPanel({out}) { return <div className="result-card"><div className="panel-heading"><h3>Analysis report</h3><span className="success-pill">{out.summary?.flags??out.findings?.length??0} flags</span></div><div className="summary-grid"><div><small>Recurring names</small><p>{out.summary?.recurring_names?.join(', ')||'None detected'}</p></div><div><small>New names</small><p>{out.summary?.new_names?.join(', ')||'None detected'}</p></div></div>{out.findings?.map((f,i)=><article key={i}><small>{f.severity} · {f.category}</small><h4>{f.title}</h4><p>{f.evidence}</p><div className="recommend"><b>Suggested editor action</b><p>{f.recommendation}</p></div></article>)}{out.review_checklist?.length>0&&<><h4>Human review checklist</h4>{out.review_checklist.map((x,i)=><label className="check" key={i}><input type="checkbox"/>{x}</label></>}<details><summary>Limitations</summary><ul>{out.limitations?.map((x,i)=><li key={i}>{x}</li>)}</ul></details><button className="outline-btn" onClick={()=>navigator.clipboard?.writeText(JSON.stringify(out,null,2))}>Copy report JSON</button></div>}
+function ResultPanel({ out }) {
+  const findings = Array.isArray(out.findings) ? out.findings : [];
+  const checklist = Array.isArray(out.review_checklist) ? out.review_checklist : [];
+  const limitations = Array.isArray(out.limitations) ? out.limitations : [];
+
+  return (
+    <div className="result-card">
+      <div className="panel-heading">
+        <h3>Analysis report</h3>
+        <span className="success-pill">{out.summary?.flags ?? findings.length} flags</span>
+      </div>
+
+      <div className="summary-grid">
+        <div>
+          <small>Recurring names</small>
+          <p>{out.summary?.recurring_names?.join(", ") || "None detected"}</p>
+        </div>
+        <div>
+          <small>New names</small>
+          <p>{out.summary?.new_names?.join(", ") || "None detected"}</p>
+        </div>
+      </div>
+
+      {findings.map((finding, index) => (
+        <article key={index}>
+          <small>{finding.severity} · {finding.category}</small>
+          <h4>{finding.title}</h4>
+          <p>{finding.evidence}</p>
+          <div className="recommend">
+            <b>Suggested editor action</b>
+            <p>{finding.recommendation}</p>
+          </div>
+        </article>
+      ))}
+
+      {checklist.length > 0 && (
+        <section>
+          <h4>Human review checklist</h4>
+          {checklist.map((item, index) => (
+            <label className="check" key={index}>
+              <input type="checkbox" />
+              {item}
+            </label>
+          ))}
+        </section>
+      )}
+
+      <details>
+        <summary>Limitations</summary>
+        <ul>
+          {limitations.map((item, index) => <li key={index}>{item}</li>)}
+        </ul>
+      </details>
+
+      <button
+        className="outline-btn"
+        onClick={() => navigator.clipboard?.writeText(JSON.stringify(out, null, 2))}
+      >
+        Copy report JSON
+      </button>
+    </div>
+  );
+}
 createRoot(document.getElementById('root')).render(<App/>);
