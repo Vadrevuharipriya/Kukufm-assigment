@@ -184,9 +184,9 @@ Environment variables:
 | Variable | Purpose | Default |
 |---|---|---|
 | `GROQ_API_KEY` | Required secret for Groq requests | No default; configure privately in Render |
-| `GROQ_MODEL` | Chat model for PS1/PS2 | `llama-3.3-70b-versatile` |\n| `GROQ_TTS_MODEL` | Text-to-speech model | `canopylabs/orpheus-v1-english` |\n| `GROQ_TTS_VOICE` | TTS voice persona | `autumn` |
+| `GROQ_MODEL` | Chat model for PS1/PS2 | `openai/gpt-oss-120b` |\n| `GROQ_TTS_MODEL` | Text-to-speech model | `canopylabs/orpheus-v1-english` |\n| `GROQ_TTS_VOICE` | TTS voice persona | `autumn` |
 
-The model name must be available for your Groq account. If Groq returns a model-not-found/decommissioned error, update `GROQ_MODEL` to a currently supported model.
+Default is `openai/gpt-oss-120b`, replacing the retired `llama-3.3-70b-versatile` model. Verify the model ID against Groq's current supported-model list and your account access before deployment.
 
 **Never put `GROQ_API_KEY` in source code, README examples, frontend environment variables, or Git commits.** Keep it in Render's backend environment settings or a local untracked `.env` file.
 
