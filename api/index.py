@@ -18,7 +18,7 @@ def groq_client():
         raise HTTPException(status_code=503, detail="Groq is not configured. Add GROQ_API_KEY in Render environment variables.")
     return Groq(api_key=key)
 
-def groq_json(system_prompt: str, user_prompt: str):
+def groq_json(system_prompt: str, user_prompt: str, max_tokens: int = 1200):
     try:
         response = groq_client().chat.completions.create(
             model=GROQ_MODEL,
@@ -27,6 +27,7 @@ def groq_json(system_prompt: str, user_prompt: str):
                 {"role": "user", "content": user_prompt}
             ],
             temperature=0.2,
+            max_tokens=max_tokens,
             response_format={"type": "json_object"},
         )
         content = response.choices[0].message.content or "{}"
@@ -82,18 +83,60 @@ Return JSON with keys: recommendations (array of objects with rank, title, id_or
     result["model"] = GROQ_MODEL
     return result
 
+def split_episode_text(text: str, max_chars: int = 4500):
+    """Split long transcripts into bounded, overlapping chunks without dropping content."""
+    text = (text or "").strip()
+    if not text:
+        return [""]
+    chunks = []
+    while len(text) > max_chars:
+        cut = text.rfind("\\n", 0, max_chars)
+        if cut < max_chars // 2:
+            cut = text.rfind(" ", 0, max_chars)
+        if cut < max_chars // 2:
+            cut = max_chars
+        chunks.append(text[:cut].strip())
+        text = text[cut:].strip()
+    if text:
+        chunks.append(text)
+    return chunks
+
+
+def summarize_episode_for_continuity(episode_text: str, episode_label: str):
+    """Create compact, grounded episode notes before cross-episode comparison."""
+    chunks = split_episode_text(episode_text)
+    notes = []
+    for index, chunk in enumerate(chunks, start=1):
+        summary = groq_json(
+            "You are preparing factual continuity notes for a script editor. Only report details stated in the supplied transcript. Preserve character names, aliases, relationships, life status, timeline, locations, important objects, injuries, promises, secrets, and unresolved cliffhangers. Do not infer missing facts. Keep the notes compact (roughly 100-150 words).",
+            f"""Episode: {episode_label}
+Transcript segment {index}/{len(chunks)}:
+{chunk}
+
+Return JSON with keys: segment_summary, characters (array of objects with name, alias_or_relationship, status_or_actions), timeline, locations, important_props, established_facts, unresolved_threads, exact_quotes (up to 3 short quotes).""",
+            max_tokens=650,
+        )
+        notes.append({"segment": index, "notes": summary})
+    return notes
+
+
 def ai_story_review(show_name: str, previous_episode: str, next_episode: str):
+    # A full episode pair can exceed Groq's free-tier 8K TPM single-request ceiling.
+    # Summarize bounded chunks first, then compare the compact notes.
+    previous_notes = summarize_episode_for_continuity(previous_episode, "Previous episode")
+    next_notes = summarize_episode_for_continuity(next_episode, "Next episode")
     return groq_json(
-        "You are a careful microdrama continuity editor. Identify only plausible continuity issues grounded in both texts. Distinguish explicit contradictions from unresolved questions and intentional cliffhangers. Never claim certainty without evidence.",
+        "You are a careful microdrama continuity editor. Compare compact, transcript-grounded notes from two episodes. Identify only plausible continuity issues supported by the notes. Distinguish explicit contradictions from unresolved questions and intentional cliffhangers. Do not invent details; human verification against original transcripts is required.",
         f"""Show: {show_name}
 
-PREVIOUS EPISODE:
-{previous_episode}
+PREVIOUS EPISODE NOTES (summaries of all transcript segments):
+{json.dumps(previous_notes, ensure_ascii=False)}
 
-NEXT EPISODE:
-{next_episode}
+NEXT EPISODE NOTES (summaries of all transcript segments):
+{json.dumps(next_notes, ensure_ascii=False)}
 
-Return JSON with keys: summary (object with overall_assessment, risk_level, flags), findings (array of objects with severity [high/review/info], category, title, evidence (quote/paraphrase from each episode), explanation, recommendation, confidence 0-1), recurring_characters (array), unresolved_threads (array), continuity_checklist (array), limitations (array)."""
+Return JSON with keys: summary (object with overall_assessment, risk_level, flags), findings (array of objects with severity [high/review/info], category, title, evidence (quote/paraphrase from each episode), explanation, recommendation, confidence 0-1), recurring_characters (array), unresolved_threads (array), continuity_checklist (array), limitations (array). Be explicit that evidence comes from chunk summaries and may need checking against the source transcript.""",
+        max_tokens=1600,
     )
 
 
