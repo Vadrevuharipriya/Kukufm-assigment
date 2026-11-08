@@ -17,8 +17,28 @@ AI disclosure: ChatGPT assisted drafting; runtime PS3 analysis uses Groq. Submit
 
 ## Groq implementation and regression-test notes
 
-All three problem statements (PS1, PS2, PS3) are intended to call Groq for text analysis. PS3 episode-pair comparisons and series scans use the Groq continuity-review helper; the service does not silently fall back to local regex analysis. Groq API errors should be surfaced clearly.
+PS1 metadata tagging, PS2 personalized recommendations, and PS3 continuity analysis call Groq for text analysis. PS3 episode-pair comparisons and series scans use the Groq continuity-review helper; the service does not silently fall back to local regex analysis. Groq API errors should be surfaced clearly.
 
-Voice preview uses Groq TTS. The backend reads the SDK's binary response through its byte/read/stream interface instead of assuming a `.content` attribute. Regression tests cover PS3 provider wiring, no silent fallback, and TTS binary response/empty response handling.
+Voice preview uses Groq TTS. The Groq Python SDK returns a `BinaryAPIResponse`; the backend uses the documented `write_to_file(path)` method and then reads the WAV bytes, rather than accessing a nonexistent `.content` attribute. The default TTS model is `canopylabs/orpheus-v1-english` and default voice is `autumn` (confirm model/voice availability in the Groq account).
 
 **Important:** Automated tests use mocked Groq responses and do not prove the live Groq API key, model access, TTS model availability, or Render deployment is working. Check GitHub Actions and perform a live Render smoke test before claiming production readiness.
+
+
+## Automated test coverage
+
+Run from the repository root:
+
+```bash
+python -m pip install -r requirements.txt
+python -m pip install pytest
+python -m pytest -q
+```
+
+Regression tests cover:
+- PS1: Groq metadata/tagging provider and model fields.
+- PS2: Groq recommendations and catalog reference preservation.
+- PS3: Groq continuity response schema, checklist, provider metadata, and no heuristic fallback on API errors.
+- Shared Groq client: provider exceptions become HTTP 502.
+- TTS: binary SDK response is converted to WAV bytes; empty output is rejected.
+
+All automated Groq calls are mocked. This is intentional: CI should not require or expose a real Groq API key. Mock tests validate integration code paths, not actual model quality, live Groq connectivity, or Render deployment. See [docs/validation_plan.md](docs/validation_plan.md) for the full test matrix and live smoke-test checklist.
