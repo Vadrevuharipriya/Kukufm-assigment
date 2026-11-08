@@ -20,12 +20,12 @@ The repository contains a React/Vite dashboard and a FastAPI backend. PS1 and PS
 | **AI configuration status** | [GET /api/ai-status](https://kukufm-assignment-api.onrender.com/api/ai-status) |
 | **Episode library** | [GET /api/episodes](https://kukufm-assignment-api.onrender.com/api/episodes) |
 | **Full-series continuity scan** | [GET /api/analyze-series](https://kukufm-assignment-api.onrender.com/api/analyze-series) |
-| **GitHub source repository** | [teambugbusters00/kuku-assignment-](https://github.com/teambugbusters00/kuku-assignment-) |
+| **Repository source** | [Browse source files](.) |
 | **Assignment/collaboration repository** | [Vadrevuharipriya/Kukufm-assigment](https://github.com/Vadrevuharipriya/Kukufm-assigment) |
 | **Frontend Render dashboard** | [Frontend service](https://dashboard.render.com/static/srv-dbmtv3vf3r2c73bkqa50) |
 | **Backend Render dashboard** | [Backend service](https://dashboard.render.com/web/srv-dbmtu395efls738j9l7g) |
-| **Solution document** | [solution_doc.md](https://github.com/teambugbusters00/kuku-assignment-/blob/main/solution_doc.md) |
-| **Validation plan** | [docs/validation_plan.md](https://github.com/teambugbusters00/kuku-assignment-/blob/main/docs/validation_plan.md) |
+| **Solution document** | [solution_doc.md](solution_doc.md) |
+| **Validation plan** | [docs/validation_plan.md](docs/validation_plan.md) |
 
 Render free services may sleep when inactive. A link existing does not guarantee that the latest deployment is healthy; check the health endpoint and Render logs.
 
