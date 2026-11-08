@@ -115,7 +115,7 @@ def test_voice_rejects_empty_binary_response(monkeypatch):
         index.generate_voice(index.SpeechRequest(text="Hello"))
     except HTTPException as exc:
         assert exc.status_code == 502
-        assert "empty or unreadable" in exc.detail
+        assert "empty audio response" in exc.detail
     else:
         raise AssertionError("Expected empty audio response to fail")
 
