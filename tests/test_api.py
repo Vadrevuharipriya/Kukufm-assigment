@@ -118,3 +118,56 @@ def test_voice_rejects_empty_binary_response(monkeypatch):
         assert "empty or unreadable" in exc.detail
     else:
         raise AssertionError("Expected empty audio response to fail")
+
+
+def test_ps1_calls_groq_and_marks_provider(monkeypatch):
+    def fake_groq_json(system, prompt):
+        assert "transcript" in prompt.lower()
+        return {"title":"Episode One","summary":"A short summary.","tags":["mystery"],"confidence":0.8}
+
+    monkeypatch.setattr(index, "groq_json", fake_groq_json)
+    result = index.ps1_tag(index.TagRequest(
+        title="Episode One",
+        language="Hindi",
+        text="A sufficiently long episode transcript for a test case."
+    ))
+    assert result["provider"] == "Groq"
+    assert result["model"] == index.GROQ_MODEL
+    assert result["tags"] == ["mystery"]
+
+
+def test_ps2_calls_groq_and_returns_catalog_grounded_recommendations(monkeypatch):
+    def fake_groq_json(system, prompt):
+        assert "Available catalog" in prompt
+        return {"recommendations":[{"rank":1,"title":"Catalog Story","id_or_catalog_reference":"C-1","match_score":90,"reasons":["mystery preference"],"why_this_fits":"Matches profile","content_notes":[]}],"profile_signals":["mystery"],"diversity_note":"One genre"}
+
+    monkeypatch.setattr(index, "groq_json", fake_groq_json)
+    result = index.ps2_recommend(index.RecommendationRequest(
+        user_profile="Likes short mystery stories.",
+        catalog="ID: C-1 | Title: Catalog Story | Genre: Mystery",
+        top_n=1
+    ))
+    assert result["provider"] == "Groq"
+    assert result["model"] == index.GROQ_MODEL
+    assert len(result["recommendations"]) == 1
+    assert result["recommendations"][0]["id_or_catalog_reference"] == "C-1"
+
+
+def test_groq_json_wraps_provider_errors(monkeypatch):
+    class BrokenClient:
+        class Chat:
+            class Completions:
+                @staticmethod
+                def create(**kwargs):
+                    raise RuntimeError("mock provider error")
+            completions = Completions()
+        chat = Chat()
+
+    monkeypatch.setattr(index, "groq_client", lambda: BrokenClient())
+    try:
+        index.groq_json("system", "user")
+    except HTTPException as exc:
+        assert exc.status_code == 502
+        assert "mock provider error" in exc.detail
+    else:
+        raise AssertionError("Expected Groq error to be converted to HTTP 502")
