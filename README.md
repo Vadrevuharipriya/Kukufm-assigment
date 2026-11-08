@@ -8,7 +8,7 @@ A unified assignment workspace covering **three problem statements**:
 
 The repository contains a React/Vite dashboard and a FastAPI backend. PS1 and PS2 have Groq-powered backend API routes. The dashboard audio-preview buttons now call a Groq text-to-speech endpoint (Orpheus English). PS3 has an interactive frontend workflow and a transparent Python rule-based continuity analyzer.
 
-> **Implementation status:** The dashboard displays all three PS cards. PS1 and PS2 backend endpoints are implemented, but their complete interactive frontend forms/workflows are not yet connected in the current UI. PS3 has the functional episode-library/manual-text frontend workflow. Do not describe all three as end-to-end complete until PS1/PS2 frontend integration and deployment tests are finished.
+> **Implementation status:** The frontend now includes interactive workspaces for PS1, PS2, and PS3. PS1/PS2 call their Groq backend endpoints; PS3 supports dataset/manual comparison and series scanning. Each successful run can be downloaded as JSON, and the Results page retains all run responses in the current browser session. Verify the latest Render deployment before treating the live site as updated.
 
 ## Quick Links
 
@@ -64,7 +64,7 @@ The route sends the supplied transcript to the Groq chat-completions API and ask
 - `evidence_notes` — array
 - `provider` and `model` — added by the backend
 
-**Frontend status:** PS1 is represented by a dashboard card, but a complete transcript input form, API submission flow, and rendered tag-results view are not yet wired into the current frontend.
+**Frontend:** The workspace includes transcript/title/language inputs, a run action, structured metadata display, JSON download/copy, and tag CSV export.
 
 ### PS2 — Personalized Audio Recommendation
 
@@ -89,7 +89,7 @@ The Groq prompt tells the model to recommend only titles/items present in the su
 - `diversity_note` — recommendation diversity explanation
 - `provider` and `model` — added by the backend
 
-**Frontend status:** PS2 is represented by a dashboard card, but profile/catalog input forms, recommendation submission, and a recommendation-results interface are not yet connected in the current frontend.
+**Frontend:** The workspace includes listener-profile and catalog inputs, configurable top-N, recommendation cards with match score/reasons, JSON download/copy, and recommendation CSV export.
 
 ### PS3 — StoryBridge: Microdrama Episode Continuity
 
